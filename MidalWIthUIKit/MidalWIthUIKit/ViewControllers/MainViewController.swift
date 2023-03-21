@@ -33,12 +33,12 @@ class MainViewController: UIViewController {
             repeating: Post(
                 "이것은 공식 홈페이지의 장학금 게시글입니다. 클릭하면 게시글 정보를 볼 수 있는 링크로 넘어갑니다.",
                 URL(string: "www.google.com")!),
-            count: 10)
+            count: 5)
         arr += Array(
             repeating: Post(
                 "이것은 공식 홈페이지의 장학금 게시글입니다.",
                 URL(string: "www.google.com")!),
-            count: 10)
+            count: 7)
         
         return arr.shuffled()
     }()
@@ -49,6 +49,9 @@ class MainViewController: UIViewController {
         
         return tableView
     }()
+    
+    var isExpandedDepartment: Bool = false
+    var isExpandedCentral: Bool = false
     
     private var filteredItems: [Post] = []
     private var receivedData: [Post] = []
@@ -75,6 +78,7 @@ class MainViewController: UIViewController {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(PostCell.self, forCellReuseIdentifier: PostCell.reuseID)   // Cell 등록 (코드 베이스라서)
+        tableView.register(PostTableHeaderView.self, forHeaderFooterViewReuseIdentifier: PostTableHeaderView.reuseID)
         tableView.rowHeight = PostCell.rowHeight
         tableView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -117,19 +121,65 @@ class MainViewController: UIViewController {
 
 extension MainViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-
-        return departmentPosts.count
+        switch section {
+        case 0 :
+            return isExpandedDepartment ? 0 : departmentPosts.count
+        case 1 :
+            return isExpandedCentral ? 0 : centralPosts.count
+        default:
+            return 0
+        }
     }
-
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: PostCell.reuseID, for: indexPath) as? PostCell else { return UITableViewCell() }
-        cell.post = departmentPosts[indexPath.row]
+        
+        if indexPath.section == 0 {
+            cell.post = departmentPosts[indexPath.row]
+        } else {
+            cell.post = centralPosts[indexPath.row]
+        }
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        return departmentPosts.count == 0 ? nil : "\(departmentPosts.count)개의 소식"
+        return section == 0 ? "\(departmentPosts.count)개의 소식" : "\(centralPosts.count)개의 소식"
+    }
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        2
+    }
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: PostTableHeaderView.reuseID) as! PostTableHeaderView
+        
+        if section == 0 {
+            headerView.titleLabel.text = "화공생명 환경공학부 환경공학전공"
+            headerView.arrowButton.tag = section
+        } else {
+            headerView.titleLabel.text = "PNU 공지사항"
+            headerView.arrowButton.tag = section
+        }
+
+        headerView.arrowButton.addTarget(self, action: #selector(arrowButtonTapped(_:)), for: .touchUpInside)
+        
+        return headerView
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 50
+    }
+    
+    @objc func arrowButtonTapped(_ sender: UIButton) {
+        let section = sender.tag
+        if section == 0 {
+            isExpandedDepartment.toggle()
+            tableView.reloadSections([section], with: .automatic)
+        } else {
+            isExpandedCentral.toggle()
+            tableView.reloadSections([section], with: .automatic)
+        }
     }
 }
 
