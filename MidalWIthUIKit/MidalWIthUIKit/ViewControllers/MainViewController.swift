@@ -7,9 +7,13 @@
 
 import UIKit
 
-class MainViewController: UIViewController {
-    
-//    private let searchController: UISearchController = UISearchController()
+enum category {
+    case department, central
+}
+
+class MainViewController: UIViewController, UISearchResultsUpdating {
+    private let searchController: UISearchController = UISearchController()
+    private var searchText: String? = String()
     
     let departmentPosts: [Post] = {
         var arr = [Post]()
@@ -53,7 +57,7 @@ class MainViewController: UIViewController {
     var isExpandedDepartment: Bool = false
     var isExpandedCentral: Bool = false
     
-    private var filteredItems: [Post] = []
+    private var searchResult: [category:[Post]] = [.department:[], .central:[]]
     private var receivedData: [Post] = []
     
     override func viewDidLoad() {
@@ -62,13 +66,14 @@ class MainViewController: UIViewController {
         navigationController?.navigationBar.prefersLargeTitles = true // Enable large titles
         navigationItem.largeTitleDisplayMode = .always // Show the large title
 
-//        searchController.searchResultsUpdater = self
-//        navigationItem.searchController = searchController
+        searchController.searchResultsUpdater = self
+        navigationItem.searchController = searchController
         
         view.backgroundColor = .white
         
         setupTableView()
-//        setupSearchController()
+        setupSearchController()
+        dismissKeyboard()
         
     }
     
@@ -88,44 +93,75 @@ class MainViewController: UIViewController {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16),
         ])
+        
+        searchResult[.department] = departmentPosts
+        searchResult[.central] = centralPosts
     }
 
     
-//    // SearchController에 대한 설정들
-//    private func setupSearchController() {
-//        navigationItem.searchController = searchController
-//        searchController.obscuresBackgroundDuringPresentation = false
-//        searchController.searchResultsUpdater = self
-//        navigationItem.hidesSearchBarWhenScrolling = false
-//    }
-//
-//    func updateSearchResults(for searchController: UISearchController) {
-//        if let searchString = searchController
-//            .searchBar
-//            .text?
-//            .components(separatedBy: " ")
-//            .joined(separator: ""),
-//           searchString.isEmpty == false {
-//            filteredItems = receivedData.filter { (item) -> Bool in
-//                item.title
-//                    .components(separatedBy: " ")
-//                    .joined(separator: "")
-//                    .localizedCaseInsensitiveContains(searchString)
-//            }
-//        } else {
-//            filteredItems = receivedData
-//        }
-//        tableView.reloadData()
-//    }
+    // SearchController에 대한 설정들
+    private func setupSearchController() {
+        navigationItem.searchController = searchController
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchResultsUpdater = self
+        navigationItem.hidesSearchBarWhenScrolling = false
+    }
+    
+    func dismissKeyboard() {
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(hideKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+    
+    @objc func hideKeyboard() {
+        self.view.window?.endEditing(true)
+    }
+
+    func updateSearchResults(for searchController: UISearchController) {
+        guard let text = searchController
+            .searchBar
+            .text?
+            .components(separatedBy: " ")
+            .joined(separator: "")
+        else {
+            searchResult[.department] = departmentPosts
+            searchResult[.central] = centralPosts
+            return
+        }
+        
+        guard !text.isEmpty else {
+            searchResult[.department] = departmentPosts
+            searchResult[.central] = centralPosts
+            tableView.reloadData()
+            return
+        }
+        
+        searchResult[.department] = departmentPosts.filter { (item) -> Bool in
+            item.title
+                .components(separatedBy: " ")
+                .joined(separator: "")
+                .localizedCaseInsensitiveContains(text)
+        }
+        
+        searchResult[.central] = centralPosts.filter { (item) -> Bool in
+            item.title
+                .components(separatedBy: " ")
+                .joined(separator: "")
+                .localizedCaseInsensitiveContains(text)
+        }
+        
+        tableView.reloadData()
+    }
 }
 
 extension MainViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
         case 0 :
-            return isExpandedDepartment ? 0 : departmentPosts.count
+            return isExpandedDepartment ? 0 : searchResult[.department]?.count ?? 0
+            
         case 1 :
-            return isExpandedCentral ? 0 : centralPosts.count
+            return isExpandedCentral ? 0 : searchResult[.central]?.count ?? 0
         default:
             return 0
         }
@@ -135,16 +171,16 @@ extension MainViewController: UITableViewDataSource {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: PostCell.reuseID, for: indexPath) as? PostCell else { return UITableViewCell() }
         
         if indexPath.section == 0 {
-            cell.post = departmentPosts[indexPath.row]
+            cell.post = searchResult[.department]![indexPath.row]
         } else {
-            cell.post = centralPosts[indexPath.row]
+            cell.post = searchResult[.central]![indexPath.row]
         }
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        return section == 0 ? "\(departmentPosts.count)개의 소식" : "\(centralPosts.count)개의 소식"
+        return section == 0 ? "\(searchResult[.department]?.count ?? 0)개의 소식" : "\(searchResult[.central]?.count ?? 0)개의 소식"
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
