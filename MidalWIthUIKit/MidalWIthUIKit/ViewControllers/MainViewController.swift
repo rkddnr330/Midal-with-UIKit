@@ -222,6 +222,8 @@ extension MainViewController: UITableViewDataSource {
 extension MainViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        print(indexPath.row)
+        if let url = URL(string: "https://www.naver.com") {
+            UIApplication.shared.open(url)
+        }
     }
 }
